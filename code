@@ -1,0 +1,81 @@
+#define BLYNK_TEMPLATE_ID "TMPL3A8lC_hzm"
+#define BLYNK_TEMPLATE_NAME "automatic irrigation"
+#define BLYNK_AUTH_TOKEN "rjehbzS2jJE36xPHajzqhrX9VSzfhdSZ"
+
+#include <WiFi.h>
+#include <BlynkSimpleEsp32.h>
+#include <DHT.h>
+
+char ssid[] = "vivo Y33s";
+char pass[] = "No123456";
+
+#define DHTPIN 4
+#define DHTTYPE DHT11
+
+#define SOIL_PIN 34
+#define RAIN_PIN 35
+#define RELAY_PIN 26
+
+DHT dht(DHTPIN, DHTTYPE);
+BlynkTimer timer;
+
+bool manualMode = false;
+
+BLYNK_WRITE(V5)
+{
+  int value = param.asInt();
+  digitalWrite(RELAY_PIN, value);
+}
+
+void sendSensorData()
+{
+  float temp = dht.readTemperature();
+  float hum = dht.readHumidity();
+
+  int soilRaw = analogRead(SOIL_PIN);
+  int soilPercent = map(soilRaw, 4095, 1500, 0, 100);
+
+  int rainRaw = analogRead(RAIN_PIN);
+
+  bool raining = rainRaw < 2000;
+
+  Blynk.virtualWrite(V0, soilPercent);
+  Blynk.virtualWrite(V1, temp);
+  Blynk.virtualWrite(V2, hum);
+  Blynk.virtualWrite(V3, raining ? "Rain" : "No Rain");
+  
+  
+  if (soilPercent < 30 && !raining)
+  {
+    digitalWrite(RELAY_PIN, HIGH);
+    Blynk.virtualWrite(V5, "NO");
+    Blynk.virtualWrite(V4, 1);
+  }
+  else
+  {
+    digitalWrite(RELAY_PIN, LOW);
+    Blynk.virtualWrite(V4, 0);
+    Blynk.virtualWrite(V5, "OFF");
+  }
+ 
+}
+
+void setup()
+{
+  Serial.begin(115200);
+
+  pinMode(RELAY_PIN, OUTPUT);
+  digitalWrite(RELAY_PIN, LOW);
+
+  dht.begin();
+  
+}
+
+void loop()
+{
+
+  Blynk.run();
+  timer.run();
+  
+
+}
